@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres
+    container_name: postgres_tasktracker
+    networks:
+      - app-network
+    restart: always
+    environment:
+      POSTGRES_DB: 'task_tracker'
+      POSTGRES_USER: 'tasktracker-user'
+      POSTGRES_PASSWORD: 'password'
+    ports:
+      - '5332:5432'
+    volumes:
+      - postgres_data2:/var/lib/postgresql/data
+
+networks:
+  app-network:
+    driver: bridge
+  elk:
+    driver: bridge
+
+
+volumes:
+  postgres_data2:
