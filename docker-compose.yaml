@@ -1,18 +1,34 @@
 services:
-  postgres:
+  postgres-tasks:
     image: postgres
-    container_name: postgres_tasktracker
+    container_name: postgres_tasks
     networks:
       - app-network
     restart: always
     environment:
-      POSTGRES_DB: 'task_tracker'
+      POSTGRES_DB: 'task_tracker_tasks'
       POSTGRES_USER: 'tasktracker-user'
       POSTGRES_PASSWORD: 'password'
     ports:
       - '5332:5432'
     volumes:
-      - postgres_data2:/var/lib/postgresql/data
+      - postgres_data_tasks:/var/lib/postgresql/data
+
+  postgres-users:
+    image: postgres
+    container_name: postgres_users
+    networks:
+      - app-network
+    restart: always
+    environment:
+      POSTGRES_DB: 'task_tracker-users'
+      POSTGRES_USER: 'tasktracker-user'
+      POSTGRES_PASSWORD: 'password'
+    ports:
+      - '5331:5432'
+    volumes:
+      - postgres_data_users:/var/lib/postgresql/data
+
 
 networks:
   app-network:
@@ -22,4 +38,5 @@ networks:
 
 
 volumes:
-  postgres_data2:
+  postgres_data_tasks:
+  postgres_data_users:

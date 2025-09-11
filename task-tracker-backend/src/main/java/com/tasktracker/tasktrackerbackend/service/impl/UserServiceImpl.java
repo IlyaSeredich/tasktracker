@@ -1,15 +1,19 @@
 package com.tasktracker.tasktrackerbackend.service.impl;
 
-import com.tasktracker.tasktrackerbackend.dto.UserResponseDto;
+import com.tasktracker.tasktrackerbackend.dto.UserAuthDto;
 import com.tasktracker.tasktrackerbackend.dto.UserCreateDto;
+import com.tasktracker.tasktrackerbackend.dto.UserResponseDto;
 import com.tasktracker.tasktrackerbackend.exception.EmailAlreadyExistException;
 import com.tasktracker.tasktrackerbackend.exception.UserAlreadyExistException;
 import com.tasktracker.tasktrackerbackend.model.Role;
 import com.tasktracker.tasktrackerbackend.model.User;
 import com.tasktracker.tasktrackerbackend.repository.UserRepository;
+import com.tasktracker.tasktrackerbackend.service.AuthService;
 import com.tasktracker.tasktrackerbackend.service.UserService;
 import com.tasktracker.tasktrackerbackend.utils.JwtTokenUtils;
 import lombok.AllArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,6 +27,8 @@ public class UserServiceImpl implements UserService {
     private final RoleServiceImpl roleService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtils jwtTokenUtils;
+    private final AuthService authService;
+    private final UserDetailsService userDetailsService;
 
 
     public UserResponseDto createUser(UserCreateDto userCreateDto) {
@@ -32,6 +38,16 @@ public class UserServiceImpl implements UserService {
         validateRegistrationConditions(username, email);
         User user = createNewUser(username, password, email);
         String jwtToken = jwtTokenUtils.generateToken(user);
+        return new UserResponseDto(username, jwtToken);
+    }
+
+    @Override
+    public UserResponseDto authorizeUser(UserAuthDto userAuthDto) {
+        String username = userAuthDto.getUsername();
+        String password = userAuthDto.getPassword();
+        authService.authenticateUser(username, password);
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        String jwtToken = jwtTokenUtils.generateToken(userDetails);
         return new UserResponseDto(username, jwtToken);
     }
 

@@ -1,5 +1,6 @@
 package com.tasktracker.tasktrackerbackend.controller;
 
+import com.tasktracker.tasktrackerbackend.dto.UserAuthDto;
 import com.tasktracker.tasktrackerbackend.dto.UserCreateDto;
 import com.tasktracker.tasktrackerbackend.dto.UserResponseDto;
 import com.tasktracker.tasktrackerbackend.service.UserService;
@@ -15,13 +16,22 @@ import org.springframework.web.bind.annotation.RestController;
 @AllArgsConstructor
 public class AuthController {
     private final UserService userService;
+    private static final String TOKEN_TEMPLATE = "Bearer %s";
 
     @PostMapping("/user")
     public ResponseEntity<UserResponseDto> register(@RequestBody @Valid UserCreateDto userCreateDto) {
         UserResponseDto userResponseDto = userService.createUser(userCreateDto);
         return ResponseEntity.ok()
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + userResponseDto.jwtToken())
+                .header(HttpHeaders.AUTHORIZATION, String.format(TOKEN_TEMPLATE, userResponseDto.jwtToken()))
                 .body(userResponseDto);
 
+    }
+
+    @PostMapping("/auth/login")
+    public ResponseEntity<UserResponseDto> authorize(@RequestBody @Valid UserAuthDto userAuthDto) {
+        UserResponseDto userResponseDto = userService.authorizeUser(userAuthDto);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.AUTHORIZATION, String.format(TOKEN_TEMPLATE, userResponseDto.jwtToken()))
+                .body(userResponseDto);
     }
 }
