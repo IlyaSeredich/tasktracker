@@ -24,6 +24,7 @@
         <module>task-tracker-server</module>
         <module>task-tracker-task-service</module>
         <module>task-tracker-user-service</module>
+        <module>task-tracker-util</module>
     </modules>
 
     <dependencyManagement>
@@ -58,7 +59,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>3.5.5</version>
+                <version>${spring.boot.dependencies.version}</version>
             </plugin>
         </plugins>
     </build>

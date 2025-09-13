@@ -7,7 +7,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
-//@ComponentScan(basePackages = {"com.tasktracker.tasktrackerentity.model"})
+@ComponentScan(basePackages = {"com.tasktracker"})
 @EntityScan(basePackages = {"com.tasktracker.tasktrackerentity"})
 //@EnableJpaRepositories(basePackages = {"com.tasktracker.tasktrackeruserservice.repository"})
 public class TaskTrackerUserServiceApplication {
