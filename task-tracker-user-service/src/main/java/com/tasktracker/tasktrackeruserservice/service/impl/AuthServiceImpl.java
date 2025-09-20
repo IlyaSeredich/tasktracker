@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
 
+    @Override
     public void authenticateUser(String username, String password) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
