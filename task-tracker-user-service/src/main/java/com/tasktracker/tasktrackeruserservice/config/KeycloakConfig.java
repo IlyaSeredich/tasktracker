@@ -10,24 +10,37 @@ import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
 @Configuration
 public class KeycloakConfig {
-    private final String serverUrl = "http://localhost:8080/";
-    private final String realm = "master";
-    private final String clientId = "admin-cli";
-    private final String username = "admin";
-    private final String password = "admin";
+    private String serverUrl = "http://localhost:8080/";
+    private String realm = "master";
+    private String clientId = "admin-cli";
+    private String username = "admin";
+    private String password = "admin";
+
+    @Value("${keycloak.credentials.secret}")
+    private String secret;
+
+    private final String appRealm = "task-tracker-realm";
 
     private Keycloak keycloak;
-    private RealmRepresentation taskTrackerRealm;
-    private ClientRepresentation taskTrackerUserClient;
+    private RealmResource realmResource;
 
     @PostConstruct
     private void init() {
+        initKeycloak();
+
+        if (!isAppRealmExists()) {
+            createKeycloakEnv();
+        }
+    }
+
+    private void initKeycloak() {
         keycloak = KeycloakBuilder.builder()
                 .serverUrl(serverUrl)
                 .realm(realm)
@@ -35,94 +48,167 @@ public class KeycloakConfig {
                 .username(username)
                 .password(password)
                 .build();
-
-        List<RealmRepresentation> representations = keycloak.realms().findAll();
-        boolean exists = representations.stream()
-                .anyMatch(realm -> realm.getRealm().equals("task-tracker-realm"));
-
-        if(!exists) {
-            taskTrackerRealm = new RealmRepresentation();
-            taskTrackerRealm.setRealm("task-tracker-realm");
-            taskTrackerRealm.setEnabled(true);
-
-            keycloak.realms().create(taskTrackerRealm);
-
-            RoleRepresentation userRoleRepresentation = new RoleRepresentation();
-            userRoleRepresentation.setName("user");
-
-            RoleRepresentation adminRoleRepresentation = new RoleRepresentation();
-            adminRoleRepresentation.setName("admin");
-
-            keycloak.realm("task-tracker-realm")
-                    .roles()
-                    .create(userRoleRepresentation);
-
-            keycloak.realm("task-tracker-realm")
-                    .roles()
-                    .create(adminRoleRepresentation);
-
-            ClientRepresentation manageRepresentation = new ClientRepresentation();
-            manageRepresentation.setClientId("task-tracker-manage-client");
-            manageRepresentation.setStandardFlowEnabled(true);
-            manageRepresentation.setPublicClient(false);
-            manageRepresentation.setServiceAccountsEnabled(true);
-            manageRepresentation.setRedirectUris(List.of("http://localhost:8080/*"));
-
-            ClientRepresentation clientRepresentation = new ClientRepresentation();
-            clientRepresentation.setClientId("task-tracker-auth-client");
-            clientRepresentation.setStandardFlowEnabled(true);
-            clientRepresentation.setPublicClient(false);
-            clientRepresentation.setRedirectUris(List.of("http://localhost:8080/*"));
-
-            keycloak.realm("task-tracker-realm")
-                    .clients()
-                    .create(clientRepresentation)
-            ;
-
-            Response response = keycloak.realm("task-tracker-realm")
-                    .clients()
-                    .create(manageRepresentation);
-
-            String manageClientUUID = CreatedResponseUtil.getCreatedId(response);
-
-            UserRepresentation serviceAccountUser = keycloak.realm("task-tracker-realm")
-                    .clients()
-                    .get(manageClientUUID)
-                    .getServiceAccountUser();
-
-            RealmResource realmResource = keycloak.realm("task-tracker-realm");
-            ClientRepresentation realmMgmntRepresentation = realmResource.clients()
-                    .findByClientId("realm-management")
-                    .get(0);
-
-            List<RoleRepresentation> roles = List.of(
-                    keycloak.realm("task-tracker-realm")
-                            .clients()
-                            .get(realmMgmntRepresentation.getId())
-                            .roles()
-                            .get("manage-users")
-                            .toRepresentation()
-            );
-
-            realmResource.users()
-                    .get(serviceAccountUser.getId())
-                    .roles()
-                    .clientLevel(realmMgmntRepresentation.getId())
-                    .add(roles);
-
-            List<RoleRepresentation> roles2 = List.of(
-                    realmResource.roles()
-                            .get("user")
-                            .toRepresentation()
-            );
-
-            realmResource.users()
-                    .get(serviceAccountUser.getId())
-                    .roles()
-                    .realmLevel()
-                    .add(roles2);
-        }
-
     }
+
+    private boolean isAppRealmExists() {
+        return keycloak.realms().findAll().stream()
+                .anyMatch(realmRepresentation ->
+                        realmRepresentation.getRealm().equals(appRealm));
+    }
+
+    private void createKeycloakEnv() {
+        configureRealm();
+        configureClients();
+    }
+
+    private void configureRealm() {
+        createRealm();
+        createRealmRoles();
+    }
+
+    private void configureClients() {
+        createAuthClient();
+        createManageUsersClient();
+    }
+
+    private void createRealm() {
+        RealmRepresentation taskTrackerRealm = new RealmRepresentation();
+        taskTrackerRealm.setRealm(appRealm);
+        taskTrackerRealm.setEnabled(true);
+        keycloak.realms().create(taskTrackerRealm);
+        realmResource = keycloak.realm(appRealm);
+    }
+
+    private void createRealmRoles() {
+        createRealmRole("user");
+        createRealmRole("admin");
+    }
+
+    private void createRealmRole(String name) {
+        RoleRepresentation roleRepresentation = new RoleRepresentation();
+        roleRepresentation.setName(name);
+
+        realmResource
+                .roles()
+                .create(roleRepresentation);
+    }
+
+    private Response createAuthClient() {
+        ClientRepresentation clientRepresentation = new ClientRepresentation();
+        clientRepresentation.setClientId("task-tracker-auth-client");
+        clientRepresentation.setStandardFlowEnabled(true);
+        clientRepresentation.setPublicClient(false);
+        clientRepresentation.setRedirectUris(List.of("http://localhost:8080/*"));
+
+        return realmResource
+                .clients()
+                .create(clientRepresentation);
+    }
+
+    private void createManageUsersClient() {
+        ClientRepresentation manageRepresentation = new ClientRepresentation();
+        manageRepresentation.setClientId("task-tracker-manage-client");
+        manageRepresentation.setStandardFlowEnabled(true);
+        manageRepresentation.setPublicClient(false);
+        manageRepresentation.setServiceAccountsEnabled(true);
+        manageRepresentation.setSecret(secret);
+        manageRepresentation.setRedirectUris(List.of("http://localhost:8080/*"));
+
+        Response response = realmResource
+                .clients()
+                .create(manageRepresentation);
+
+        configureManageUsersClient(response);
+    }
+
+    private void configureManageUsersClient(Response response) {
+        String manageClientUUID = CreatedResponseUtil.getCreatedId(response);
+        UserRepresentation serviceAccountUser = getServiceAccountUser(manageClientUUID);
+        addRolesToServiceUser(serviceAccountUser);
+    }
+
+    private UserRepresentation getServiceAccountUser(String manageClientUUID) {
+        return realmResource
+                .clients()
+                .get(manageClientUUID)
+                .getServiceAccountUser();
+    }
+
+    private void addRolesToServiceUser(UserRepresentation serviceAccountUser) {
+        addClientLvlRoles(serviceAccountUser);
+        addRealmLvlRoles(serviceAccountUser);
+    }
+
+    private void addClientLvlRoles(UserRepresentation serviceAccountUser) {
+        addRealmMgmntRole(serviceAccountUser);
+        addViewRealmRole(serviceAccountUser);
+    }
+
+    private void addRealmLvlRoles(UserRepresentation serviceAccountUser) {
+        addAdminRole(serviceAccountUser);
+    }
+
+    private void addRealmMgmntRole(UserRepresentation serviceAccountUser) {
+        String realmMgmntId = getRealmMgmntId();
+        RoleRepresentation manageUsersRole = getManageUsersRole(realmMgmntId);
+
+        realmResource.users()
+                .get(serviceAccountUser.getId())
+                .roles()
+                .clientLevel(realmMgmntId)
+                .add(List.of(manageUsersRole));
+    }
+
+    private void addViewRealmRole(UserRepresentation serviceAccountUser) {
+        String realmMgmntId = getRealmMgmntId();
+        RoleRepresentation viewRealmRole = getViewRealmRole(realmMgmntId);
+
+        realmResource.users()
+                .get(serviceAccountUser.getId())
+                .roles()
+                .clientLevel(realmMgmntId)
+                .add(List.of(viewRealmRole));
+    }
+
+    private void addAdminRole(UserRepresentation serviceAccountUser) {
+        RoleRepresentation adminRole = getAdminRole();
+
+        realmResource.users()
+                .get(serviceAccountUser.getId())
+                .roles()
+                .realmLevel()
+                .add(List.of(adminRole));
+    }
+
+    private String getRealmMgmntId() {
+        return realmResource.clients()
+                .findByClientId("realm-management")
+                .getFirst().getId();
+    }
+
+    private RoleRepresentation getManageUsersRole(String realMgmntId) {
+        return realmResource
+                .clients()
+                .get(realMgmntId)
+                .roles()
+                .get("manage-users")
+                .toRepresentation();
+    }
+
+    private RoleRepresentation getViewRealmRole(String realMgmntId) {
+        return realmResource
+                .clients()
+                .get(realMgmntId)
+                .roles()
+                .get("view-realm")
+                .toRepresentation();
+    }
+
+    private RoleRepresentation getAdminRole() {
+        return realmResource.roles()
+                .get("admin")
+                .toRepresentation();
+    }
+
 
 }
