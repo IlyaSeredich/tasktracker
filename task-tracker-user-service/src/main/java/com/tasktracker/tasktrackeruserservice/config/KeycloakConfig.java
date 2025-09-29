@@ -17,16 +17,20 @@ import java.util.List;
 
 @Configuration
 public class KeycloakConfig {
-    private String serverUrl = "http://localhost:8080/";
-    private String realm = "master";
-    private String clientId = "admin-cli";
-    private String username = "admin";
-    private String password = "admin";
-
+    @Value("${keycloak.auth-server-url}")
+    private String serverUrl;
+    @Value("${keycloak.root.realm}")
+    private String realm;
+    @Value("${keycloak.root.client}")
+    private String clientId;
+    @Value("${keycloak.root.username}")
+    private String username;
+    @Value("${keycloak.root.password}")
+    private String password;
     @Value("${keycloak.credentials.secret}")
     private String secret;
-
-    private final String appRealm = "task-tracker-realm";
+    @Value("${keycloak.realm}")
+    private String appRealm;
 
     private Keycloak keycloak;
     private RealmResource realmResource;

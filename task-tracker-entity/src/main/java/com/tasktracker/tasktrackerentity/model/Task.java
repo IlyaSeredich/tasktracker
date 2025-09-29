@@ -25,11 +25,14 @@ public class Task {
 //    private User user;
 
     @Column(name = "user_id")
-    private Long userId;
+    private String userId;
 
     @ManyToOne
     @JoinColumn(name = "status_id")
     private Status status;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
