@@ -32,9 +32,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(requests ->
-                        requests.requestMatchers("/login/*").hasRole("user")
+                        requests.requestMatchers("/user/logout").hasRole("user")
                                 .requestMatchers("/admin/delete").hasRole("admin")
-                                .requestMatchers("/admin/create").permitAll()
+                                .requestMatchers("/user/create").permitAll()
                 )
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

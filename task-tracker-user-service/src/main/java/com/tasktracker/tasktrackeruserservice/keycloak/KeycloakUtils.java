@@ -1,10 +1,14 @@
 package com.tasktracker.tasktrackeruserservice.keycloak;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tasktracker.tasktrackeruserservice.dto.KeycloakErrorDto;
 import com.tasktracker.tasktrackeruserservice.dto.UserCreateDto;
 import com.tasktracker.tasktrackeruserservice.dto.UserUpdateDto;
+import com.tasktracker.tasktrackeruserservice.exception.InvalidAccessTokenException;
 import jakarta.annotation.PostConstruct;
 import jakarta.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
@@ -15,6 +19,8 @@ import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -22,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Service
+@Slf4j
 public class KeycloakUtils {
     @Value("${keycloak.auth-server-url}")
     private String serverUrl;
@@ -69,9 +76,34 @@ public class KeycloakUtils {
 
         Response response = usersResource.create(kcUser);
 
+        if(response.getStatus() == HttpStatus.CONFLICT.value()) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String errorMessage = response.readEntity(String.class);
+            KeycloakErrorDto keycloakErrorDto = null;
+            try {
+                 keycloakErrorDto = objectMapper.readValue(errorMessage, KeycloakErrorDto.class);
+            } catch (Exception ex) {
+
+            }
+            String[] splitError = errorMessage.split(":");
+            log.error(keycloakErrorDto.errorMessage());
+        }
         return response;
 
     }
+
+    public void logoutCurrentSession(Jwt jwt) {
+        String currentSessionId = jwt.getClaimAsString("sid");
+        String userId = jwt.getSubject();
+
+        if(!isSessionExisting(currentSessionId, userId)) {
+            throw new InvalidAccessTokenException();
+        }
+
+        log.error("SessionId: {}", currentSessionId);
+        realmResource.deleteSession(currentSessionId, false);
+    }
+
 
     public void addRoles(String userId, List<String> roles) {
 
@@ -120,5 +152,10 @@ public class KeycloakUtils {
         passwordCredentials.setType(CredentialRepresentation.PASSWORD);
         passwordCredentials.setValue(password);
         return passwordCredentials;
+    }
+
+    private boolean isSessionExisting(String currentSessionId, String userId) {
+        return realmResource.users().get(userId).getUserSessions().stream()
+                .anyMatch(session -> session.getId().equals(currentSessionId));
     }
 }

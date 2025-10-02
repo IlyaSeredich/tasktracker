@@ -20,23 +20,6 @@ import java.util.List;
 public class AdminController {
     private final KeycloakUtils keycloakUtils;
 
-    @PostMapping("/create")
-    public ResponseEntity<?> create(@Valid @RequestBody UserCreateDto userCreateDto) {
-        Response response = keycloakUtils.createKeycloakUser(userCreateDto);
-        if(response.getStatus() == HttpStatus.CONFLICT.value()) {
-            return ResponseEntity.status(response.getStatus())
-                    .body("user already exists");
-
-        }
-        String userId = CreatedResponseUtil.getCreatedId(response);
-        System.out.println("Created users id is - " + userId);
-
-        List<String> defaultRoles = List.of("user");
-
-        keycloakUtils.addRoles(userId, defaultRoles);
-        return ResponseEntity.status(response.getStatus()).build();
-    }
-
     @PostMapping("/delete")
     public ResponseEntity<?> delete(@RequestBody String userId) {
         keycloakUtils.deleteUserById(userId);

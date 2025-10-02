@@ -1,10 +1,7 @@
 package com.tasktracker.tasktrackeruserservice.exception.handler;
 
 import com.tasktracker.tasktrackeruserservice.dto.ErrorResponseDto;
-import com.tasktracker.tasktrackeruserservice.exception.EmailAlreadyExistException;
-import com.tasktracker.tasktrackeruserservice.exception.JwtTokenExpiredException;
-import com.tasktracker.tasktrackeruserservice.exception.UserAlreadyExistException;
-import com.tasktracker.tasktrackeruserservice.exception.WrongJwtTokenSignException;
+import com.tasktracker.tasktrackeruserservice.exception.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -79,6 +76,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(WrongJwtTokenSignException.class)
     public ResponseEntity<ErrorResponseDto> handleWrongJwtTokenSignException(
             WrongJwtTokenSignException ex,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(
+                        new ErrorResponseDto(ex.getMessage(), HttpStatus.BAD_REQUEST, request.getRequestURI())
+                );
+    }
+
+    @ExceptionHandler(InvalidAccessTokenException.class)
+    public ResponseEntity<ErrorResponseDto> handleInvalidAccessTokenException(
+            InvalidAccessTokenException ex,
             HttpServletRequest request
     ) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

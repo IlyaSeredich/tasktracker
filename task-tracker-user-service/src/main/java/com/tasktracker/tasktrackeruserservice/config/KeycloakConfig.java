@@ -154,13 +154,15 @@ public class KeycloakConfig {
 
     private void addRealmMgmntRole(UserRepresentation serviceAccountUser) {
         String realmMgmntId = getRealmMgmntId();
+        RoleRepresentation manageRealmRole = getManageRealmRole(realmMgmntId);
         RoleRepresentation manageUsersRole = getManageUsersRole(realmMgmntId);
+
 
         realmResource.users()
                 .get(serviceAccountUser.getId())
                 .roles()
                 .clientLevel(realmMgmntId)
-                .add(List.of(manageUsersRole));
+                .add(List.of(manageRealmRole, manageUsersRole));
     }
 
     private void addViewRealmRole(UserRepresentation serviceAccountUser) {
@@ -188,6 +190,15 @@ public class KeycloakConfig {
         return realmResource.clients()
                 .findByClientId("realm-management")
                 .getFirst().getId();
+    }
+
+    private RoleRepresentation getManageRealmRole(String realMgmntId) {
+        return realmResource
+                .clients()
+                .get(realMgmntId)
+                .roles()
+                .get("manage-realm")
+                .toRepresentation();
     }
 
     private RoleRepresentation getManageUsersRole(String realMgmntId) {
